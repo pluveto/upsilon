@@ -1,9 +1,10 @@
 cc_library(
     name = "core",
-    srcs = ["model.cc"],
-    hdrs = ["model.h"],
+    srcs = glob(["*.cc"]),
+    hdrs = glob(["*.hh"]),
+    includes = ["."],
     visibility = ["//visibility:public"],
-    # deps = [
-    #     "@eigen//:eigen",
-    # ],
+    deps = [
+        "@eigen//:eigen",
+    ],
 )
