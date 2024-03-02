@@ -97,6 +97,12 @@ class Tensor<float> {
       matrix.fill(value);
     }
   }
+
+  void random() {
+    for (auto& matrix : data_) {
+      matrix = Eigen::MatrixXf::Random(matrix.rows(), matrix.cols());
+    }
+  }
 };
 
 using ftensor = Tensor<float>;
