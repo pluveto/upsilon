@@ -24,7 +24,7 @@ class Tensor<float> {
       : data_(channels, Eigen::MatrixXf(rows, cols)),
         raw_shapes_({channels, rows, cols}) {}
 
-  explicit Tensor(uint32_t size) : Tensor(1, size, 1) {}
+  explicit Tensor(uint32_t size) : Tensor(1, 1, size) {}
 
   explicit Tensor(uint32_t rows, uint32_t cols) : Tensor(1, rows, cols) {}
 
