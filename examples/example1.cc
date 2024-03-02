@@ -1,11 +1,8 @@
-#include "src/core/model.h"
+#include <Eigen/Dense>
 #include <iostream>
 
 int main() {
-  upsilon::Model model;
-  model.Train();
-  std::cout << "Training completed." << std::endl;
-  model.Predict();
-  std::cout << "Prediction completed." << std::endl;
+  Eigen::MatrixXd m = Eigen::MatrixXd::Random(4, 6);
+  std::cout << m << '\n';
   return 0;
 }

@@ -3,4 +3,7 @@ cc_library(
     srcs = ["model.cc"],
     hdrs = ["model.h"],
     visibility = ["//visibility:public"],
+    # deps = [
+    #     "@eigen//:eigen",
+    # ],
 )

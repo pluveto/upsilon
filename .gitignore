@@ -100,7 +100,8 @@ npm-debug.log*
 
 # Dependency directories
 deps/
-third_party/
+third_party/*
+!third_party/**/BUILD
 external/
 
 # Output of 'npm pack'
