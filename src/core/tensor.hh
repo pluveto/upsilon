@@ -17,6 +17,9 @@ class Tensor<uint8_t> {
 
 template <>
 class Tensor<float> {
+ private:
+  std::vector<uint32_t> raw_shapes_;  // Tensor dimensions, channels, rows, cols
+  std::vector<Eigen::MatrixXf> data_;  // Tensor data, one matrix per channel
  public:
   explicit Tensor() = default;
 
@@ -48,8 +51,6 @@ class Tensor<float> {
   uint32_t size() const { return rows() * cols() * channels(); }
 
   void set_data(const std::vector<Eigen::MatrixXf>& data) { data_ = data; }
-
-  bool empty() const { return data_.empty(); }
 
   float index(uint32_t offset) const {
     // This is a simplified version. You might need a more complex logic to
@@ -91,9 +92,11 @@ class Tensor<float> {
     return data_[channel](row, col);
   }
 
- private:
-  std::vector<uint32_t> raw_shapes_;  // Tensor dimensions, channels, rows, cols
-  std::vector<Eigen::MatrixXf> data_;  // Tensor data, one matrix per channel
+  void fill(float value) {
+    for (auto& matrix : data_) {
+      matrix.fill(value);
+    }
+  }
 };
 
 using ftensor = Tensor<float>;
