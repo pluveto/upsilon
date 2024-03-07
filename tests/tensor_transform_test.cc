@@ -60,3 +60,24 @@ TEST(TensorTransformTest, TransposeSquareMatrix) {
 //   EXPECT_EQ(f1.at(1, 1), 6.f);
 //   EXPECT_EQ(f1.at(1, 2), 5.f);
 // }
+TEST(TensorTransformTest, Flatten) {
+  upsilon::Tensor<float> f1(2, 3, 4);
+  std::vector<float> values(2 * 3 * 4);
+  for (int i = 0; i < 24; ++i) {
+    values.at(i) = float(i + 1);
+  }
+  f1.Fill(values);
+  f1.Show();
+
+  f1.Flatten();
+  f1.Show();
+
+  EXPECT_EQ(f1.size(), 24);
+  EXPECT_EQ(f1.channels(), 24);
+  EXPECT_EQ(f1.rows(), 1);
+  EXPECT_EQ(f1.cols(), 1);
+
+  for (int i = 0; i < 24; ++i) {
+    EXPECT_EQ(f1.at(i), float(i + 1));
+  }
+}

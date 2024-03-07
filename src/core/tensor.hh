@@ -168,10 +168,8 @@ class Tensor<float> {
     if (rows() != cols()) {
       throw std::invalid_argument("Transpose only supports square matrices");
     }
-
-    raw_shapes_ = {raw_shapes_[0], raw_shapes_[2], raw_shapes_[1]};
-    // rebuild the tensor with the new shape
-    raw_data_ = raw_data_.reshape(Eigen::array<Eigen::Index, 3>{raw_shapes_[0], raw_shapes_[1], raw_shapes_[2]});
+    
+    raw_data_ = raw_data_.shuffle(Eigen::array<Eigen::Index, 3>{0, 2, 1});
   }
 
   std::vector<float> values() const {
@@ -185,6 +183,52 @@ class Tensor<float> {
     }
 
     return values;
+  }
+
+  void Flatten() {
+    if (dims_ == 1) {
+      return;
+    }
+
+    if (dims_ == 2) {
+      raw_shapes_ = {raw_shapes_[1] * raw_shapes_[2],1 ,1};
+      raw_data_ = raw_data_.reshape(Eigen::array<Eigen::Index, 3>{raw_shapes_[1] * raw_shapes_[2], 1, 1});
+      dims_ = 1;
+    }
+
+    if (dims_ == 3) {
+      raw_shapes_ = {raw_shapes_[0] * raw_shapes_[1] * raw_shapes_[2], 1, 1};
+      raw_data_ = raw_data_.reshape(Eigen::array<Eigen::Index, 3>{raw_shapes_[0] * raw_shapes_[1] * raw_shapes_[2], 1, 1});
+      dims_ = 1;
+    }
+  }
+
+  void Padding(const std::vector<uint32_t>& pads,
+                            float padding_value) {
+    if (pads.size() != 4) {
+      throw std::invalid_argument("Padding only supports 4 dimensions: up, bottom, left, right.");
+    }
+    uint32_t pad_rows1 = pads.at(0);  // up
+    uint32_t pad_rows2 = pads.at(1);  // bottom
+    uint32_t pad_cols1 = pads.at(2);  // left
+    uint32_t pad_cols2 = pads.at(3);  // right
+
+    uint32_t new_rows = rows() + pad_rows1 + pad_rows2;
+    uint32_t new_cols = cols() + pad_cols1 + pad_cols2;
+
+    Eigen::Tensor<float, 3, Eigen::RowMajor> new_data(channels(), new_rows, new_cols);
+    new_data.setConstant(padding_value);
+
+    for (uint32_t i = 0; i < channels(); i++) {
+      for (uint32_t j = 0; j < rows(); j++) {
+        for (uint32_t k = 0; k < cols(); k++) {
+          new_data(i, j + pad_rows1, k + pad_cols1) = raw_data_(i, j, k);
+        }
+      }
+    }
+
+    raw_data_ = new_data;
+    raw_shapes_ = {channels(), new_rows, new_cols};
   }
 
   float& at(uint32_t channel, uint32_t row, uint32_t col) {
