@@ -20,10 +20,11 @@ class Tensor<uint8_t> {
 template <>
 class Tensor<float> {
  private:
-  std::vector<uint32_t> raw_shapes_;  // Tensor dimensions: channels, rows, cols
-  uint32_t dims_ = 0;                     // Number of dimensions
-  // NOTE: storage order is row, col, channel
-  Eigen::Tensor<float, 3, Eigen::RowMajor> raw_data_;      // Tensor data, one matrix per channel
+  std::vector<uint32_t> raw_shapes_;
+  uint32_t dims_ = 0;
+  Eigen::Tensor<float, 3, Eigen::RowMajor> raw_data_;
+  Eigen::Tensor<float, 3, Eigen::RowMajor> raw_grads_;
+
  public:
   explicit Tensor() = default;
 
@@ -62,8 +63,13 @@ class Tensor<float> {
     }
   }
 
+  void ZeroGrad() {
+    raw_grads_.setZero();
+  }
+
   void Fill(float value) {
     raw_data_.setConstant(value);
+    raw_grads_.setZero();
   }
 
   void Fill(const std::vector<float>& values) {
@@ -81,6 +87,8 @@ class Tensor<float> {
         }
       }
     }
+
+    raw_grads_.setZero();
   }
 
   Tensor(const Tensor& tensor) = default;
@@ -88,21 +96,21 @@ class Tensor<float> {
   Tensor<float>& operator=(Tensor&& tensor) noexcept = default;
   Tensor<float>& operator=(const Tensor& tensor) = default;
 
-   uint32_t size() const {
-        return static_cast<uint32_t>(raw_data_.size());
-    }
+  uint32_t size() const {
+    return static_cast<uint32_t>(raw_data_.size());
+  }
 
-    uint32_t channels() const {
-        return raw_shapes_[0];
-    }
+  uint32_t channels() const {
+    return raw_shapes_[0];
+  }
 
-    uint32_t rows() const {
-        return raw_shapes_[1];
-    }
+  uint32_t rows() const {
+    return raw_shapes_[1];
+  }
 
-    uint32_t cols() const {
-        return raw_shapes_[2];
-    }
+  uint32_t cols() const {
+      return raw_shapes_[2];
+  }
 
   float& index(uint32_t offset) {
     auto channel = offset / (rows() * cols());
@@ -241,6 +249,28 @@ class Tensor<float> {
 
   float& at(uint32_t i) {
     return index(i);
+  }
+
+  float at(uint32_t i) const {
+    return raw_data_.data()[i];
+  }
+
+  Tensor<float> mul(const Tensor<float>& other) const {
+    if (raw_shapes_ != other.raw_shapes_) {
+      throw std::invalid_argument("hadamard product requires same shape");
+    }
+
+    Tensor<float> result(raw_shapes_);
+    
+    for (uint32_t i = 0; i < size(); i++) {
+      result.at(i) = at(i) * other.at(i);
+    }
+
+    return result;
+  }
+
+  int ndim() const {
+    return dims_;
   }
 };
 
