@@ -146,6 +146,29 @@ class Tensor<float> {
       raw_data_ = new_data;
   }
 
+  void Transform(const std::function<float(float)>& f) {
+
+    for (uint32_t i = 0; i < channels(); i++) {
+      for (uint32_t j = 0; j < rows(); j++) {
+        for (uint32_t k = 0; k < cols(); k++) {
+          raw_data_(i, j, k) = f(raw_data_(i, j, k));
+        }
+      }
+    }
+  }
+
+  void Transpose() {
+    if (dims_ != 2) {
+      throw std::invalid_argument("Transpose only supports 2D tensors");
+    }
+
+    if (rows() != cols()) {
+      throw std::invalid_argument("Transpose only supports square matrices");
+    }
+
+    raw_data_ = raw_data_.shuffle(Eigen::array<int, 3>{0, 2, 1});
+  }
+
   std::vector<float> values() const {
     std::vector<float> values;
     for (uint32_t i = 0; i < channels(); i++) {
