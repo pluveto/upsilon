@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-TEST(TensorTest, tensor_init1D) {
+TEST(TensorCreateTest, tensor_init1D) {
   upsilon::Tensor<float> f1(4);
   f1.Fill(1.f);
   const auto &shape = f1.shape();
@@ -13,7 +13,7 @@ TEST(TensorTest, tensor_init1D) {
 
 }
 
-TEST(TensorTest, tensor_init2D) {
+TEST(TensorCreateTest, tensor_init2D) {
   upsilon::Tensor<float> f1(4, 4);
   f1.Fill(1.f);
 
@@ -27,7 +27,7 @@ TEST(TensorTest, tensor_init2D) {
 
 }
 
-TEST(TensorTest, tensor_init3D_3) {
+TEST(TensorCreateTest, tensor_init3D_3) {
   upsilon::Tensor<float> f1(2, 3, 4);
   f1.Fill(1.f);
 
@@ -40,9 +40,16 @@ TEST(TensorTest, tensor_init3D_3) {
   EXPECT_EQ(channels, 2);
   EXPECT_EQ(rows, 3);
   EXPECT_EQ(cols, 4);
+
+  int c = f1.channels();
+  int r = f1.rows();
+  int k = f1.cols();
+  EXPECT_EQ(c, 2);
+  EXPECT_EQ(r, 3);
+  EXPECT_EQ(k, 4);
 }
 
-TEST(TensorTest, tensor_init3D_2) {
+TEST(TensorCreateTest, tensor_init3D_2) {
   upsilon::Tensor<float> f1(1, 2, 3);
   f1.Fill(1.f);
 
@@ -56,7 +63,7 @@ TEST(TensorTest, tensor_init3D_2) {
   f1.Show();
 }
 
-TEST(TensorTest, tensor_init3D_1) {
+TEST(TensorCreateTest, tensor_init3D_1) {
   upsilon::Tensor<float> f1(1, 1, 3);
   f1.Fill(1.f);
 
