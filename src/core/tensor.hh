@@ -21,7 +21,7 @@ template <>
 class Tensor<float> {
  private:
   std::vector<uint32_t> raw_shapes_;  // Tensor dimensions: channels, rows, cols
-  uint32_t dims_;                     // Number of dimensions
+  uint32_t dims_ = 0;                     // Number of dimensions
   // NOTE: storage order is row, col, channel
   Eigen::Tensor<float, 3, Eigen::RowMajor> raw_data_;      // Tensor data, one matrix per channel
  public:
@@ -118,7 +118,10 @@ class Tensor<float> {
         std::cout << "Channel " << i << ":\n";
         std::cout << raw_data_.chip(i, 0) << '\n';
       }
-    } else {
+    } else if (dims_ == 2) {
+      std::cout << raw_data_.chip(0, 0) << '\n';
+    }
+    else {
       std::cout << raw_data_ << '\n';
     }
   }
@@ -166,7 +169,9 @@ class Tensor<float> {
       throw std::invalid_argument("Transpose only supports square matrices");
     }
 
-    raw_data_ = raw_data_.shuffle(Eigen::array<int, 3>{0, 2, 1});
+    raw_shapes_ = {raw_shapes_[0], raw_shapes_[2], raw_shapes_[1]};
+    // rebuild the tensor with the new shape
+    raw_data_ = raw_data_.reshape(Eigen::array<Eigen::Index, 3>{raw_shapes_[0], raw_shapes_[1], raw_shapes_[2]});
   }
 
   std::vector<float> values() const {
