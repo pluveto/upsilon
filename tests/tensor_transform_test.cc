@@ -8,7 +8,7 @@ TEST(TensorTransformTest, neg1) {
   
   const auto neg1 = [](float x) { return -1 * x; };
   f1.show();
-  f1.apply(neg1);
+  auto f1 = f1.apply(neg1);
   f1.show();
 
   for (int c = 0; c < 2; ++c) {

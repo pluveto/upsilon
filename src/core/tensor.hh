@@ -32,7 +32,6 @@ class Tensor {};
 
 template <>
 class Tensor<uint8_t> {
-  // not implemented yet
 };
 
 template <>
@@ -224,19 +223,28 @@ private:
     throw std::invalid_argument("Invalid tensor type");
   }
 
-  void apply(const std::function<float(float)>& f) {
+  Tensor<float> apply(const std::function<float(float)>& f) const {
     if (type_ == TensorType::Scalar) {
-      std::get<ScalarData<float>>(raw_data_) = f(std::get<ScalarData<float>>(raw_data_));
+      Tensor<float> ret({1});
+      ret.at(0) = f(std::get<ScalarData<float>>(raw_data_));
+      return ret;
+
     } else if (type_ == TensorType::Matrix) {
       auto& data = std::get<MatrixData<float>>(raw_data_);
+      Tensor<float> ret_data(*this);
       for (uint32_t i = 0; i < size(); i++) {
-        data.data()[i] = f(data.data()[i]);
+        ret_data.at(i) = f(data.data()[i]);
       }
+      return ret_data;
+
     } else if (type_ == TensorType::Tensor) {
       auto& data = std::get<TensorData<float>>(raw_data_);
-      for (uint32_t i = 0; i < size(); i++) {
-        data.data()[i] = f(data.data()[i]);
+      Tensor<float> ret_data(*this);
+      for (size_t i = 0; i < data.size(); i++) {
+        ret_data.at(i) = f(data.data()[i]);
       }
+      return ret_data;
+
     }
   }
 
@@ -253,6 +261,24 @@ private:
       std::get<MatrixData<float>>(raw_data_).transposeInPlace();
       raw_shape_ = {raw_shape_[0], raw_shape_[2], raw_shape_[1]};
       return;
+    }
+
+    throw std::invalid_argument("Invalid tensor type");
+  }
+
+  Tensor<float> transposed() const {
+    if (type_ == TensorType::Scalar) {
+      return *this;
+    }
+
+    if (type_ == TensorType::Matrix) {
+      if (raw_shape_[0] != 1) {
+        throw std::invalid_argument("Transpose only supports 2D matrix currently");
+      }
+
+      Tensor<float> ret(*this);
+      ret.transpose();
+      return ret;
     }
 
     throw std::invalid_argument("Invalid tensor type");
@@ -523,19 +549,51 @@ private:
     return Tensor<float>(result);
   }
 
+  Tensor<float> inv() const {
+    if (this->type() != TensorType::Matrix) {
+      throw std::invalid_argument("Matrix inversion requires 2D matrix");
+    }
+
+    return Tensor<float>(std::get<MatrixData<float>>(raw_data_).inverse());
+  }
+
+  Tensor<float> square() const {
+    const auto sqrt_fn = [](float x) { return x * x; };
+    return this->apply(sqrt_fn);
+  }
+
+  Tensor<float> pow(float exponent) const {
+    const auto pow_fn = [exponent](float x) { return std::pow(x, exponent); };
+    return this->apply(pow_fn);
+  }
+
   friend std::ostream& operator<<(std::ostream& os, const Tensor<float>& obj) {
     if (obj.type() == TensorType::Scalar) {
-      os << std::get<ScalarData<float>>(obj.raw_data_);
+      os << std::get<ScalarData<float>>(obj.data());
     } else if (obj.type() == TensorType::Matrix) {
-      os << std::get<MatrixData<float>>(obj.raw_data_);
+      os << std::get<MatrixData<float>>(obj.data());
     } else if (obj.type() == TensorType::Tensor) {
-      for(uint32_t c = 0; c < obj.raw_shape_[0]; c++) {
+      for(uint32_t c = 0; c < obj.shape()[0]; c++) {
         os << "Channel " << c << std::endl;
-        os << std::get<TensorData<float>>(obj.raw_data_).chip(c, 0) << std::endl;
+        os << std::get<TensorData<float>>(obj.data()).chip(c, 0) << std::endl;
       }
     }
 
     return os;
+  }
+
+  static Tensor<float> zeros_like(const Tensor<float>& other) {
+    if (other.type() == TensorType::Scalar) {
+      return Tensor<float>(0.0f);
+    }
+
+    if (other.type() == TensorType::Matrix) {
+      return Tensor<float>(TensorType::Matrix, {other.rows(), other.cols()});
+    }
+
+    if (other.type() == TensorType::Tensor) {
+      return Tensor<float>(TensorType::Tensor, {other.channels(), other.rows(), other.cols()});
+    }
   }
 
 };
