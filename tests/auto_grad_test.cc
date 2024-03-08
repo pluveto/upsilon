@@ -4,26 +4,25 @@
 using namespace upsilon;
 
 TEST(AutomaticDifferentiationTest, GradientCheck) {
-    // 创建变量
-    auto a = std::make_shared<Variable>(Tensor<float>({1}, 3.0f));
-    auto b = std::make_shared<Variable>(Tensor<float>({1}, 2.0f));
+    auto a = std::make_shared<Variable>(Tensor<float>(3.0f));
+    auto b = std::make_shared<Variable>(Tensor<float>(2.0f));
+    std::cout << "a: " << a->output << std::endl;
+    std::cout << "b: " << b->output << std::endl;
 
-    // 构建计算图
     auto mul_ab = std::make_shared<Mul>(a, b);
     auto add_a_ab = std::make_shared<Add>(a, mul_ab);
 
-    // 正向传播
+    std::cout << "start forward" << std::endl;
     mul_ab->forward();
     add_a_ab->forward();
 
-    // 反向传播
-    add_a_ab->grad = Tensor<float>({1}, 1.0f); // 对 y 的梯度是 1
+    std::cout << "start backward" << std::endl;
+    add_a_ab->grad = Tensor<float>(1.0f); // 对 y 的梯度是 1
     add_a_ab->backward();
     mul_ab->backward();
 
-    // 输出结果和梯度
-    std::cout << "Result: " << add_a_ab->output.data() << std::endl;
-    std::cout << "Grad a: " << a->grad.data() << std::endl;
-    std::cout << "Grad b: " << b->grad.data() << std::endl;
+    std::cout << "Result: " << add_a_ab->output << std::endl;
+    std::cout << "Grad a: " << a->grad << std::endl;
+    std::cout << "Grad b: " << b->grad << std::endl;
 
 }

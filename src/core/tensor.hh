@@ -24,6 +24,8 @@ using MatrixData = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMa
 template<typename T>
 using TensorData = Eigen::Tensor<T, 3, Eigen::RowMajor>;
 
+template<typename T>
+using UnifiedData = std::variant<ScalarData<T>, MatrixData<T>, TensorData<T>>;
 
 template <typename T = float>
 class Tensor {};
@@ -38,11 +40,11 @@ class Tensor<float> {
 private:
   std::vector<uint32_t> raw_shape_;
   TensorType type_;
-  std::variant<ScalarData<float>, MatrixData<float>, TensorData<float>> raw_data_;
+  UnifiedData<float> raw_data_;
 
  public:
   TensorType type() const { return type_; }
-
+  
   explicit Tensor(const TensorType type, const std::vector<uint32_t>& shape) : type_(type) {
     if (type == TensorType::Scalar) {
       raw_data_ = ScalarData<float>(0);
@@ -84,6 +86,9 @@ private:
     raw_shape_ = {static_cast<uint32_t>(data.dimension(0)), static_cast<uint32_t>(data.dimension(1)), static_cast<uint32_t>(data.dimension(2))};
   }
 
+  UnifiedData<float> data() const {
+    return raw_data_;
+  }
 
   void fill(float value) {
     if (type_ == TensorType::Scalar) {
@@ -133,6 +138,14 @@ private:
       return raw_shape_[2];
   }
 
+  int ndim() const {
+    if (this->type() == TensorType::Scalar) {
+      return 0;
+    } else if (this->type() == TensorType::Matrix) {
+      return 2;
+    }
+  }
+
   void show() const {
     if (type_ == TensorType::Scalar) {
       std::cout << std::get<ScalarData<float>>(raw_data_) << std::endl;
@@ -167,26 +180,26 @@ private:
       throw std::invalid_argument("New shape must have the same number of elements");
     }
     if (type_ == TensorType::Matrix) {
-        if (new_shape.size() == 2) {
-          using t = Eigen::Map<MatrixData<float>>;
-          uint32_t new_rows = new_shape[0];
-          uint32_t new_cols = new_shape[1];
-          t new_data(std::get<MatrixData<float>>(raw_data_).data(), new_rows, new_cols);
-          this->raw_data_ = new_data;
-          this->raw_shape_ = {1, new_rows, new_cols};
-          return;
-        } else if (new_shape.size() == 3) {
-          // type conversion to tensor
-          auto &matrix = std::get<MatrixData<float>>(raw_data_);
-          TensorData<float> new_data(new_shape[0], new_shape[1], new_shape[2]);
-          for (size_t i = 0; i < matrix.size(); i++) {
-            new_data.data()[i] = matrix.data()[i];
-          }
-          this->raw_data_ = new_data;
-          this->raw_shape_ = new_shape;
-          this->type_ = TensorType::Tensor;
-          return;
+      if (new_shape.size() == 2) {
+        using t = Eigen::Map<MatrixData<float>>;
+        uint32_t new_rows = new_shape[0];
+        uint32_t new_cols = new_shape[1];
+        t new_data(std::get<MatrixData<float>>(raw_data_).data(), new_rows, new_cols);
+        this->raw_data_ = new_data;
+        this->raw_shape_ = {1, new_rows, new_cols};
+        return;
+      } else if (new_shape.size() == 3) {
+        // type conversion to tensor
+        auto &matrix = std::get<MatrixData<float>>(raw_data_);
+        TensorData<float> new_data(new_shape[0], new_shape[1], new_shape[2]);
+        for (size_t i = 0; i < matrix.size(); i++) {
+          new_data.data()[i] = matrix.data()[i];
         }
+        this->raw_data_ = new_data;
+        this->raw_shape_ = new_shape;
+        this->type_ = TensorType::Tensor;
+        return;
+      }
 
     } else if (type_ == TensorType::Tensor) {
       if (new_shape.size() == 3) {
@@ -438,6 +451,10 @@ private:
       throw std::invalid_argument("Hadamard product requires same shape");
     }
 
+    if (type_ == TensorType::Scalar && other.type() == TensorType::Scalar) {
+      return Tensor<float>(std::get<ScalarData<float>>(raw_data_) * std::get<ScalarData<float>>(other.raw_data_));
+    }
+
     Tensor<float> result(raw_shape_);
     
     for (uint32_t i = 0; i < size(); i++) {
@@ -450,6 +467,10 @@ private:
   Tensor<float> add(const Tensor<float>& other) const {
     if (raw_shape_ != other.raw_shape_) {
       throw std::invalid_argument("Addition requires same shape");
+    }
+
+    if (type_ == TensorType::Scalar && other.type() == TensorType::Scalar) {
+      return Tensor<float>(std::get<ScalarData<float>>(raw_data_) + std::get<ScalarData<float>>(other.raw_data_));
     }
 
     Tensor<float> result(this->shape());
@@ -502,13 +523,21 @@ private:
     return Tensor<float>(result);
   }
 
-  int ndim() const {
-    if (this->type() == TensorType::Scalar) {
-      return 0;
-    } else if (this->type() == TensorType::Matrix) {
-      return 2;
+  friend std::ostream& operator<<(std::ostream& os, const Tensor<float>& obj) {
+    if (obj.type() == TensorType::Scalar) {
+      os << std::get<ScalarData<float>>(obj.raw_data_);
+    } else if (obj.type() == TensorType::Matrix) {
+      os << std::get<MatrixData<float>>(obj.raw_data_);
+    } else if (obj.type() == TensorType::Tensor) {
+      for(uint32_t c = 0; c < obj.raw_shape_[0]; c++) {
+        os << "Channel " << c << std::endl;
+        os << std::get<TensorData<float>>(obj.raw_data_).chip(c, 0) << std::endl;
+      }
     }
+
+    return os;
   }
+
 };
 
 }  // namespace upsilon
