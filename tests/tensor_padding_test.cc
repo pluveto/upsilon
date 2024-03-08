@@ -4,13 +4,13 @@
 
 TEST(TensorPaddingTest, padding1) {
   using namespace upsilon;
-  Tensor<float> tensor(3, 4, 5);
+  Tensor<float> tensor(TensorType::Tensor, {3, 4, 5});
   ASSERT_EQ(tensor.channels(), 3);
   ASSERT_EQ(tensor.rows(), 4);
   ASSERT_EQ(tensor.cols(), 5);
 
-  tensor.Fill(1.f);
-  tensor.Padding({1, 2, 3, 4}, 0);
+  tensor.fill(1.f);
+  tensor.padding({1, 2, 3, 4}, 0);
   ASSERT_EQ(tensor.rows(), 7);
   ASSERT_EQ(tensor.cols(), 12);
 
@@ -31,13 +31,13 @@ TEST(TensorPaddingTest, padding1) {
 
 TEST(TensorPaddingTest, padding2) {
   using namespace upsilon;
-  Tensor<float> tensor(3, 4, 5);
+  Tensor<float> tensor(TensorType::Tensor, {3, 4, 5});
   ASSERT_EQ(tensor.channels(), 3);
   ASSERT_EQ(tensor.rows(), 4);
   ASSERT_EQ(tensor.cols(), 5);
 
-  tensor.Fill(1.f);
-  tensor.Padding({2, 2, 2, 2}, 3.14f);
+  tensor.fill(1.f);
+  tensor.padding({2, 2, 2, 2}, 3.14f);
   ASSERT_EQ(tensor.rows(), 8);
   ASSERT_EQ(tensor.cols(), 9);
 

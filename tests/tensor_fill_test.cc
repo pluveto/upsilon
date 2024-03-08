@@ -12,8 +12,8 @@ TEST(TensorFillTest, fill1) {
   for (int i = 0; i < 24; ++i) {
     std::cout << values.at(i) << " ";
   }
-  f1.Fill(values);
-  f1.Show();
+  f1.fill(values);
+  f1.show();
   int i = 0;
   for (int c = 0; c < 2; ++c) {
     for (int x = 0; x < 3; ++x) {
@@ -31,7 +31,7 @@ TEST(TensorFillTest, reshape1) {
   for (int i = 0; i < 24; ++i) {
     values.at(i) = float(i + 1);
   }
-  f1.Fill(values);
+  f1.fill(values);
 
   for (int i = 0; i < 2; ++i) {
     for (int j = 0; j < 3; ++j) {
@@ -41,8 +41,8 @@ TEST(TensorFillTest, reshape1) {
     }
   }
 
-  f1.Show();
-  f1.Reshape({4, 3, 2});
+  f1.show();
+  f1.reshape({4, 3, 2});
   for (int i = 0; i < 4; ++i) {
     for (int j = 0; j < 3; ++j) {
       for (int k = 0; k < 2; ++k) {

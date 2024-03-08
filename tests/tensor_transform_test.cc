@@ -3,11 +3,11 @@
 #include <gtest/gtest.h>
 
 TEST(TensorTransformTest, neg1) {
-  upsilon::Tensor<float> f1(2, 3, 4);
-  f1.Fill(2.f);
+  upsilon::Tensor<float> f1(TensorType::Tensor, {2, 3, 4});
+  f1.fill(2.f);
   
   const auto neg1 = [](float x) { return -1 * x; };
-  f1.Transform(neg1);
+  f1.apply(neg1);
 
   for (int c = 0; c < 2; ++c) {
     for (int x = 0; x < 3; ++x) {
@@ -19,7 +19,7 @@ TEST(TensorTransformTest, neg1) {
 }
 
 TEST(TensorTransformTest, TransposeSquareMatrix) {
-  upsilon::Tensor<float> f1(2, 2);
+  upsilon::Tensor<float> f1(TensorType::Matrix, {2, 2});
   EXPECT_EQ(f1.channels(), 1);
   EXPECT_EQ(f1.shape().size(), 2);
 
@@ -28,11 +28,11 @@ TEST(TensorTransformTest, TransposeSquareMatrix) {
     values.at(i) = float(i + 1);
   }
 
-  f1.Fill(values);
-  f1.Show();
+  f1.fill(values);
+  f1.show();
 
-  f1.Transpose();
-  f1.Show();
+  f1.transpose();
+  f1.show();
 
   EXPECT_EQ(f1.at(0, 0), 1.f);
   EXPECT_EQ(f1.at(0, 1), 3.f);
@@ -61,16 +61,16 @@ TEST(TensorTransformTest, TransposeSquareMatrix) {
 //   EXPECT_EQ(f1.at(1, 2), 5.f);
 // }
 TEST(TensorTransformTest, Flatten) {
-  upsilon::Tensor<float> f1(2, 3, 4);
+  upsilon::Tensor<float> f1(TensorType::Tensor, {2, 3, 4});
   std::vector<float> values(2 * 3 * 4);
   for (int i = 0; i < 24; ++i) {
     values.at(i) = float(i + 1);
   }
-  f1.Fill(values);
-  f1.Show();
+  f1.fill(values);
+  f1.show();
 
-  f1.Flatten();
-  f1.Show();
+  f1.flatten();
+  f1.show();
 
   EXPECT_EQ(f1.size(), 24);
   EXPECT_EQ(f1.channels(), 24);

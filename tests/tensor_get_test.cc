@@ -12,7 +12,7 @@ TEST(TensorGetSizeTest, size1) {
 
 TEST(TensorGetValueTest, GetValue) {
   upsilon::Tensor<float> f1(2, 3, 4);
-  f1.Fill(1.f);
+  f1.fill(1.f);
   EXPECT_EQ(f1.at(1, 2, 3), 1.f);
 
   upsilon::Tensor<float> f2(4, 3, 2);
@@ -21,6 +21,6 @@ TEST(TensorGetValueTest, GetValue) {
     values.at(i) = float(i + 1);
   }
 
-  f2.Fill(values);
+  f2.fill(values);
   EXPECT_EQ(f2.at(1, 2, 1), values.at(1 * 3 * 2 + 2 * 2 + 1));
 }

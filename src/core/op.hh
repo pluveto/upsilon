@@ -3,60 +3,63 @@
 
 namespace upsilon {
 
-  class Fn {
+class Op {
+public:
+    std::vector<std::shared_ptr<Op>> inputs;
+    Tensor<float> output;
+    Tensor<float> grad;
+
+    Op() : output(0), grad(0) {}
+
+    virtual void forward() = 0;
+    virtual void backward() = 0;
+};
+
+
+  class Variable : public Op {
   public:
-    virtual Tensor<float> forward(const Tensor<float> &x, const Tensor<float> &y) = 0;
-    virtual std::tuple<Tensor<float>,Tensor<float>> backward(const Tensor<float> &grad) = 0;
-    virtual std::string name() = 0;
+      Variable(Tensor<float>&& tensor) {
+          this->output = tensor;
+      }
+
+      void forward() override {
+      }
+
+      void backward() override {
+      }
   };
 
-  class AddFn: public Fn {
+  class Add: public Op {
   public:
-    Tensor<float> forward(const Tensor<float> &x, const Tensor<float> &y) {
-      Tensor<float> result(x.shape());
-      for (uint32_t i = 0; i < x.size(); ++i) {
-        auto sum = x.at(i) + y.at(i);
-        result.at(i) = sum;
-      }
-      return result;
+    Add(std::shared_ptr<Op> a, std::shared_ptr<Op> b) {
+        inputs.push_back(a);
+        inputs.push_back(b);
     }
 
-    std::tuple<Tensor<float>,Tensor<float>> backward(const Tensor<float> &grad) {
-      return std::make_tuple(grad, grad);
+    void forward() override {
+        output = inputs[0]->output.add(inputs[1]->output);
     }
 
-    std::string name() {
-      return "AddFn";
+    void backward() override {
+        inputs[0]->grad = inputs[0]->grad.add(grad);
+        inputs[1]->grad = inputs[1]->grad.add(grad);
     }
   };
 
-  class MulFn: public Fn {
-
-    std::tuple<Tensor<float>, Tensor<float>> saved_tensors_ = std::make_tuple(Tensor<float>(), Tensor<float>());
+  class Mul: public Op {
   public:
-    Tensor<float> forward(const Tensor<float> &x, const Tensor<float> &y) {
-      Tensor<float> result(x.shape());
-      for (uint32_t i = 0; i < x.size(); ++i) {
-        auto product = x.at(i) * y.at(i);
-        result.at(i) = product;
-      }
-      saved_tensors_ = std::make_tuple(x, y);
-      return result;
+    Mul(std::shared_ptr<Op> a, std::shared_ptr<Op> b) {
+        inputs.push_back(a);
+        inputs.push_back(b);
     }
 
-    // 这里的 grad 是损失函数对输出 z 的梯度，
-    // 即 ∂L/∂z，乘以相应的导数 y 和 x，即 ∂z/∂x 和 ∂z/∂y，来计算 ∂L/∂x 和 ∂L/∂y。
-    std::tuple<Tensor<float>,Tensor<float>> backward(const Tensor<float> &grad) {
-      auto x = std::get<0>(saved_tensors_);
-      auto y = std::get<1>(saved_tensors_);
-      Tensor<float> dx = grad.mul(y);
-      Tensor<float> dy = grad.mul(x);
-      return std::make_tuple(dx, dy);
+    void forward() override {
+        output = inputs[0]->output.mul(inputs[1]->output);
     }
 
-    std::string name() {
-      return "MulFn";
+    void backward() override {
+        inputs[0]->grad = inputs[0]->grad.add(inputs[1]->output.mul(grad));
+        inputs[1]->grad = inputs[1]->grad.add(inputs[0]->output.mul(grad));
     }
   };
 }
-
