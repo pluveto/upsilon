@@ -6,7 +6,12 @@ TEST(TensorCreateTest, tensor_init1D) {
   upsilon::Tensor<float> f1(upsilon::TensorType::Matrix, {1, 4});
   f1.fill(1.f);
   const auto &shape = f1.shape();
-  const uint32_t size = shape.at(0);
+  std::cout << "shape: ";
+  for (auto &s : shape) {
+    std::cout << s << " ";
+  }
+  std::cout << std::endl;
+  const uint32_t size = shape.at(1);
   f1.show();
 
   EXPECT_EQ(size, 4);

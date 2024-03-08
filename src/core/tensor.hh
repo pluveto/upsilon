@@ -139,7 +139,7 @@ private:
     } else if (type_ == TensorType::Matrix) {
       std::cout << std::get<MatrixData<float>>(raw_data_) << std::endl;
     } else if (type_ == TensorType::Tensor) {
-      for(uint32_t c; c < raw_shape_[0]; c++) {
+      for(uint32_t c = 0; c < raw_shape_[0]; c++) {
         std::cout << "Channel " << c << std::endl;
         std::cout << std::get<TensorData<float>>(raw_data_).chip(c, 0) << std::endl;
       }
@@ -163,38 +163,64 @@ private:
       throw std::invalid_argument("Cannot reshape a scalar");
     }
 
-    if (size() != new_shape[0] * new_shape[1] * new_shape[2]) {
+    if (size() != std::accumulate(new_shape.begin(), new_shape.end(), 1, std::multiplies<uint32_t>())) {
       throw std::invalid_argument("New shape must have the same number of elements");
     }
-
-    if (new_shape.size() != 3) {
-      throw std::invalid_argument("New shape must have 3 dimensions");
-    }
-
     if (type_ == TensorType::Matrix) {
-      using t = Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>;
-      uint32_t new_rows = new_shape[1];
-      uint32_t new_cols = new_shape[2];
-      t new_data(std::get<MatrixData<float>>(raw_data_).data(), new_rows, new_cols);
-      raw_data_ = new_data;
-      raw_shape_ = new_shape;
+        if (new_shape.size() == 2) {
+          using t = Eigen::Map<MatrixData<float>>;
+          uint32_t new_rows = new_shape[0];
+          uint32_t new_cols = new_shape[1];
+          t new_data(std::get<MatrixData<float>>(raw_data_).data(), new_rows, new_cols);
+          this->raw_data_ = new_data;
+          this->raw_shape_ = {1, new_rows, new_cols};
+          return;
+        } else if (new_shape.size() == 3) {
+          // type conversion to tensor
+          auto &matrix = std::get<MatrixData<float>>(raw_data_);
+          TensorData<float> new_data(new_shape[0], new_shape[1], new_shape[2]);
+          for (size_t i = 0; i < matrix.size(); i++) {
+            new_data.data()[i] = matrix.data()[i];
+          }
+          this->raw_data_ = new_data;
+          this->raw_shape_ = new_shape;
+          this->type_ = TensorType::Tensor;
+          return;
+        }
+
     } else if (type_ == TensorType::Tensor) {
-      auto tensor = std::get<TensorData<float>>(raw_data_);
-      tensor.reshape(Eigen::array<Eigen::Index, 3>({new_shape[0], new_shape[1], new_shape[2]}));
-      raw_shape_ = new_shape;
+      if (new_shape.size() == 3) {
+        auto &tensor = std::get<TensorData<float>>(raw_data_);
+        raw_data_ = tensor.reshape(Eigen::array<Eigen::Index, 3>({new_shape[0], new_shape[1], new_shape[2]}));
+        this->raw_shape_ = new_shape;
+        return;
+      } else if (new_shape.size() == 2) {
+        // type conversion to matrix
+        auto &tensor = std::get<TensorData<float>>(raw_data_);
+        MatrixData<float> new_data(new_shape[0], new_shape[1]);
+        for (size_t i = 0; i < tensor.size(); i++) {
+          new_data.data()[i] = tensor.data()[i];
+        }
+        this->raw_data_ = new_data;
+        this->raw_shape_ = {1, new_shape[0], new_shape[1]};
+        this->type_ = TensorType::Matrix;
+        return;
+      }
     }
+
+    throw std::invalid_argument("Invalid tensor type");
   }
 
   void apply(const std::function<float(float)>& f) {
     if (type_ == TensorType::Scalar) {
       std::get<ScalarData<float>>(raw_data_) = f(std::get<ScalarData<float>>(raw_data_));
     } else if (type_ == TensorType::Matrix) {
-      auto data = std::get<MatrixData<float>>(raw_data_);
+      auto& data = std::get<MatrixData<float>>(raw_data_);
       for (uint32_t i = 0; i < size(); i++) {
         data.data()[i] = f(data.data()[i]);
       }
     } else if (type_ == TensorType::Tensor) {
-      auto data = std::get<TensorData<float>>(raw_data_);
+      auto& data = std::get<TensorData<float>>(raw_data_);
       for (uint32_t i = 0; i < size(); i++) {
         data.data()[i] = f(data.data()[i]);
       }
@@ -211,8 +237,9 @@ private:
         throw std::invalid_argument("Transpose only supports 2D matrix currently");
       }
 
-      raw_data_ = std::get<MatrixData<float>>(raw_data_).transpose();
+      std::get<MatrixData<float>>(raw_data_).transposeInPlace();
       raw_shape_ = {raw_shape_[0], raw_shape_[2], raw_shape_[1]};
+      return;
     }
 
     throw std::invalid_argument("Invalid tensor type");
@@ -235,13 +262,25 @@ private:
       return;
     }
 
-    if (type_ == TensorType::Matrix || type_ == TensorType::Tensor) {
+    if (type_ == TensorType::Matrix) {
       if (row_vector) {
-        this->reshape({1, raw_shape_[1] * raw_shape_[2], 1});
+        this->reshape({1, size()});
       } else {
-        this->reshape({1, 1, raw_shape_[1] * raw_shape_[2]});
+        this->reshape({size(), 1});
       }
-    } 
+
+      return;
+    }
+
+    if (type_ == TensorType::Tensor) {
+      if (row_vector) {
+        this->reshape({1, 1, size()});
+      } else {
+        this->reshape({1, size(), 1});
+      }
+
+      return;
+    }
 
     throw std::invalid_argument("Invalid tensor type");
   }
@@ -252,10 +291,6 @@ private:
       throw std::invalid_argument("Padding only supports 4 dimensions: up, bottom, left, right.");
     }
 
-    if (type_ != TensorType::Matrix) {
-      throw std::invalid_argument("Padding only supports 2D matrix currently");
-    }
-
     uint32_t pad_rows1 = pads.at(0);  // up
     uint32_t pad_rows2 = pads.at(1);  // bottom
     uint32_t pad_cols1 = pads.at(2);  // left
@@ -264,17 +299,49 @@ private:
     uint32_t new_rows = rows() + pad_rows1 + pad_rows2;
     uint32_t new_cols = cols() + pad_cols1 + pad_cols2;
 
-    MatrixData<float> new_data(new_rows, new_cols);
-    new_data.setConstant(value);
-
-    for (uint32_t i = 0; i < rows(); i++) {
-      for (uint32_t j = 0; j < cols(); j++) {
-        new_data(i + pad_rows1, j + pad_cols1) = at(i, j);
-      }
+    if (new_rows < rows() || new_cols < cols()) {
+      throw std::invalid_argument("Invalid padding size");
     }
 
-    this->raw_data_ = new_data;
-    this->raw_shape_ = {1, new_rows, new_cols};
+    if (pad_rows1 == 0 && pad_rows2 == 0 && pad_cols1 == 0 && pad_cols2 == 0) {
+      return;
+    }
+    
+    if (this->type_ == TensorType::Matrix) {
+      MatrixData<float> new_data(new_rows, new_cols);
+      new_data.setConstant(value);
+
+      for (uint32_t i = 0; i < rows(); i++) {
+        for (uint32_t j = 0; j < cols(); j++) {
+          new_data(i + pad_rows1, j + pad_cols1) = at(i, j);
+        }
+      }
+
+      this->raw_data_ = new_data;
+      this->raw_shape_ = {1, new_rows, new_cols};
+
+      return;
+    }
+
+    if (this->type_ == TensorType::Tensor) {
+      // padding for each channel
+      TensorData<float> new_data(channels(), new_rows, new_cols);
+      new_data.setConstant(value);
+
+      for (uint32_t c = 0; c < channels(); c++) {
+        for (uint32_t i = 0; i < rows(); i++) {
+          for (uint32_t j = 0; j < cols(); j++) {
+            new_data(c, i + pad_rows1, j + pad_cols1) = at(c, i, j);
+          }
+        }
+      }
+
+      this->raw_data_ = new_data;
+      this->raw_shape_ = {channels(), new_rows, new_cols};
+
+      return;
+    }
+
 
   }
 
@@ -291,7 +358,15 @@ private:
       throw std::invalid_argument("Index out of range");
     }
 
-    return std::get<MatrixData<float>>(raw_data_).data()[i];
+    if (type_ == TensorType::Matrix) {
+      return std::get<MatrixData<float>>(raw_data_).data()[i];
+    }
+    
+    if (type_ == TensorType::Tensor) {
+      return std::get<TensorData<float>>(raw_data_).data()[i];
+    }
+
+    throw std::invalid_argument("Invalid tensor type");
   }
 
   float at(uint32_t i) const {
